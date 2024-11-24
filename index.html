@@ -4,38 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Typing Test</title>
+    <link rel="stylesheet" href="/static/style.css">
     <script>
         let startTime;
         let sampleText = "";
-
+    
         async function startTest() {
             // Get a sentence from the server
             const response = await fetch('/get_sentence');
             const data = await response.json();
             sampleText = data.sentence;
-
+    
             // Display the sentence
             document.getElementById("sample-text").innerText = sampleText;
-
+    
             // Start timer
             startTime = Date.now();
-            document.getElementById("user-input").disabled = false;
-            document.getElementById("user-input").focus();
+            const userInput = document.getElementById("user-input");
+            userInput.disabled = false;
+            userInput.focus();
+    
+            // Attach Enter key listener after enabling the input
+            userInput.addEventListener("keydown", function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault(); // Prevent adding a new line
+                    finishTest(); // Call finishTest function
+                }
+            });
         }
-
+    
         async function finishTest() {
             const typedText = document.getElementById("user-input").value;
             const elapsedTime = (Date.now() - startTime) / 1000;
-
+    
             // Send results to the server
             const response = await fetch('/calculate_results', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ typed_text: typedText, sample_text: sampleText, elapsed_time: elapsedTime })
             });
-
+    
             const results = await response.json();
-
+    
             // Display results
             document.getElementById("results").innerHTML = `
                 <p>Words per minute (WPM): ${results.wpm}</p>
@@ -43,24 +53,19 @@
                 <p>Your typed text: "${results.typed_text}"</p>
                 <p>Original text: "${results.sample_text}"</p>
             `;
+    
+            // Disable the input after finishing the test
+            document.getElementById("user-input").disabled = true;
         }
-
-        // Allow Enter key to finish the test
-        document.getElementById("user-input").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                event.preventDefault();  // Prevent newline
-                finishTest();  // Call finishTest when Enter is pressed
-            }
-        });
     </script>
-</head>
+    
 <body>
     <h1>Typing Test</h1>
     <p id="sample-text">Press "Start Test" to begin.</p>
     <textarea id="user-input" rows="4" cols="50" disabled></textarea>
     <br>
     <button onclick="startTest()">Start Test</button>
-    <button onclick="finishTest()">Finish Test</button>
+    
     <div id="results"></div>
 </body>
 </html>
