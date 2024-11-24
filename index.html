@@ -3,22 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Typing Speed Tester</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Typing Test</title>
+    <script>
+        let startTime;
+        let sampleText = "";
+
+        async function startTest() {
+            // Get a sentence from the server
+            const response = await fetch('/get_sentence');
+            const data = await response.json();
+            sampleText = data.sentence;
+
+            // Display the sentence
+            document.getElementById("sample-text").innerText = sampleText;
+
+            // Start timer
+            startTime = Date.now();
+            document.getElementById("user-input").disabled = false;
+            document.getElementById("user-input").focus();
+        }
+
+        async function finishTest() {
+            const typedText = document.getElementById("user-input").value;
+            const elapsedTime = (Date.now() - startTime) / 1000;
+
+            // Send results to the server
+            const response = await fetch('/calculate_results', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ typed_text: typedText, sample_text: sampleText, elapsed_time: elapsedTime })
+            });
+
+            const results = await response.json();
+
+            // Display results
+            document.getElementById("results").innerHTML = `
+                <p>Words per minute (WPM): ${results.wpm}</p>
+                <p>Accuracy: ${results.accuracy}%</p>
+                <p>Your typed text: "${results.typed_text}"</p>
+                <p>Original text: "${results.sample_text}"</p>
+            `;
+        }
+
+        // Allow Enter key to finish the test
+        document.getElementById("user-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();  // Prevent newline
+                finishTest();  // Call finishTest when Enter is pressed
+            }
+        });
+    </script>
 </head>
 <body>
-    <h1>Typing Speed Tester</h1>
-    <p>Type the paragraph below as quickly and accurately as you can:</p>
-    <blockquote>
-        <p>{{ paragraph }}</p>
-    </blockquote>
-
-    <form action="/result" method="POST">
-        <input type="hidden" name="reference_text" value="{{ paragraph }}">
-        <input type="hidden" name="start_time" value="{{ start_time }}">
-        <textarea name="typed_text" rows="6" cols="80" placeholder="Start typing here..." required></textarea>
-        <br><br>
-        <button type="submit">Submit</button>
-    </form>
+    <h1>Typing Test</h1>
+    <p id="sample-text">Press "Start Test" to begin.</p>
+    <textarea id="user-input" rows="4" cols="50" disabled></textarea>
+    <br>
+    <button onclick="startTest()">Start Test</button>
+    <button onclick="finishTest()">Finish Test</button>
+    <div id="results"></div>
 </body>
 </html>
