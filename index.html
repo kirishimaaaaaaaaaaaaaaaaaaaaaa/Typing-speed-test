@@ -8,14 +8,15 @@
     <script>
         let startTime;
         let sampleText = "";
+        let timerInterval;
     
         async function startTest() {
-            // Get a sentence from the server
-            const response = await fetch('/get_sentence');
+            // Get a paragraph from the server
+            const response = await fetch('/get_paragraph');
             const data = await response.json();
-            sampleText = data.sentence;
+            sampleText = data.paragraph;
     
-            // Display the sentence
+            // Display the paragraph
             document.getElementById("sample-text").innerText = sampleText;
     
             // Start timer
@@ -24,16 +25,25 @@
             userInput.disabled = false;
             userInput.focus();
     
-            // Attach Enter key listener after enabling the input
-            userInput.addEventListener("keydown", function(event) {
-                if (event.key === "Enter") {
-                    event.preventDefault(); // Prevent adding a new line
-                    finishTest(); // Call finishTest function
+            // Hide "Start Test" button and show "Take another test" after the test finishes
+            document.getElementById("start-btn").style.display = "none";
+            document.getElementById("finish-btn").style.display = "inline-block";
+    
+            // Start the timer
+            let timeRemaining = 15;
+            timerInterval = setInterval(() => {
+                timeRemaining = Math.max(0, 15 - Math.floor((Date.now() - startTime) / 1000));
+                document.getElementById("timer").innerText = `Time left: ${timeRemaining}s`;
+    
+                // End test if time is over
+                if (timeRemaining <= 0) {
+                    finishTest();
                 }
-            });
+            }, 1000);
         }
     
         async function finishTest() {
+            clearInterval(timerInterval);  // Stop the timer
             const typedText = document.getElementById("user-input").value;
             const elapsedTime = (Date.now() - startTime) / 1000;
     
@@ -56,15 +66,20 @@
     
             // Disable the input after finishing the test
             document.getElementById("user-input").disabled = true;
+            document.getElementById("finish-btn").style.display = "none";
+            document.getElementById("start-btn").style.display = "inline-block";
+            document.getElementById("start-btn").innerText = "Take Another Test";
         }
     </script>
-    
+</head>
 <body>
     <h1>Typing Test</h1>
+    <p id="timer">Time left: 15s</p>  <!-- Timer now above the paragraph -->
     <p id="sample-text">Press "Start Test" to begin.</p>
     <textarea id="user-input" rows="4" cols="50" disabled></textarea>
     <br>
-    <button onclick="startTest()">Start Test</button>
+    <button id="start-btn" onclick="startTest()">Start Test</button>
+    <button id="finish-btn" style="display: none;" onclick="finishTest()">Finish Test</button>
     
     <div id="results"></div>
 </body>
