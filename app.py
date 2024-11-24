@@ -1,55 +1,101 @@
-from flask import Flask, render_template, request
+import curses
+import time
 import random
-from time import time
 
-app = Flask(__name__)
+# Test duration in seconds
+test_duration = 15
 
-# Typing test paragraphs
-test_paragraphs = [
-    "Success is not achieved overnight. It is the result of consistent effort, unwavering dedication, and a refusal to give up in the face of adversity. Those who persevere through challenges, adapt to changes, and maintain focus on their goals are the ones who ultimately achieve greatness. It is not the absence of failure but the ability to rise each time we fall that defines true success.",
-    "The rapid advancement of technology has transformed nearly every aspect of human life. From smartphones and artificial intelligence to renewable energy and space exploration, innovations are reshaping the way we communicate, work, and live. While these advancements bring convenience and opportunities, they also raise ethical questions about privacy, security, and the potential consequences of automation on the workforce.",
-    "The beauty of nature lies in its diversity and intricacy. Towering mountains, vast oceans, and dense forests remind us of the Earth's grandeur. Every leaf, every ripple, and every bird's song is a testament to the intricate balance that sustains life. It is our responsibility to protect this fragile ecosystem, ensuring that future generations can marvel at the wonders of the natural world.",
-    "Education is the cornerstone of personal growth and societal progress. It empowers individuals to think critically, solve problems, and contribute meaningfully to their communities. A well-rounded education not only imparts knowledge but also fosters creativity, empathy, and a lifelong love for learning. In a rapidly changing world, the ability to learn, unlearn, and relearn is more important than ever.",
-    "Time is the most valuable resource we have, yet it is often taken for granted. Effective time management requires setting priorities, avoiding distractions, and maintaining a clear focus on goals. By planning our days wisely and making conscious choices about how we spend our time, we can achieve a balance between work, leisure, and personal growth. Remember, time wasted cannot be regained."
+# List of pre-made sentences
+sentences = [
+    "Programming is not just about solving problems but about thinking logically and building systems.",
+    "In the age of technology, consistent practice can significantly improve typing skills.",
+    "The journey of a thousand miles begins with a single step, but persistence keeps you moving forward.",
+    "The ability to stay focused and consistent over time is what differentiates masters from amateurs in any field.",
 ]
 
-# Helper functions
-def calculate_errors(reference_text, user_input):
-    errors_count = 0
-    for char_index in range(len(reference_text)):
+def typing_test(stdscr):
+    # Curses initialization
+    curses.curs_set(0)  # Hide cursor
+    stdscr.clear()
+
+    # Select a random sentence
+    sample_text = random.choice(sentences)
+    stdscr.addstr(0, 0, "Typing Test")
+    stdscr.addstr(2, 0, "Type the following sentence as quickly and accurately as possible:")
+    stdscr.addstr(4, 0, f"\"{sample_text}\"")
+    stdscr.addstr(6, 0, f"You have {test_duration} seconds. Press Enter to start...")
+
+    stdscr.refresh()
+    stdscr.getch()  # Wait for Enter
+
+    # Initialize variables
+    user_input = []
+    start_time = time.time()
+    last_timer_update = -1
+
+    while True:
+        elapsed_time = time.time() - start_time
+        remaining_time = max(0, test_duration - int(elapsed_time))
+
+        # Update timer display
+        if remaining_time != last_timer_update:
+            stdscr.addstr(8, 0, f"Time left: {remaining_time} seconds   ")
+            last_timer_update = remaining_time
+
+        # Handle user input
+        stdscr.nodelay(True)  # Non-blocking input
         try:
-            if reference_text[char_index] != user_input[char_index]:
-                errors_count += 1
-        except IndexError:
-            errors_count += 1
-    return errors_count
+            key = stdscr.getch()
+            if key != -1:  # A key was pressed
+                if key in (10, 13):  # Enter key
+                    break
+                elif key in (8, 127, curses.KEY_BACKSPACE):  # Backspace
+                    if user_input:
+                        user_input.pop()  # Remove the last character
+                elif 32 <= key <= 126:  # Printable characters
+                    user_input.append(chr(key))
+        except:
+            pass
 
-def calculate_typing_speed(start_time, end_time, typed_text):
-    time_elapsed = end_time - start_time
-    if time_elapsed == 0:  # Prevent division by zero
-        return 0
-    typing_speed = len(typed_text) / time_elapsed  # Characters per second
-    return round(typing_speed, 2)
+        # Display user input
+        typed_text = ''.join(user_input)
+        stdscr.addstr(10, 0, " " * (len(sample_text) + 20))  # Clear the line
+        stdscr.addstr(10, 0, f"Typing: {typed_text}")  # Display updated text
+        stdscr.refresh()
 
-# Routes
-@app.route("/")
-def index():
-    # Randomly select a paragraph
-    paragraph = random.choice(test_paragraphs)
-    return render_template("index.html", paragraph=paragraph, start_time=time())
+        # Exit if time is up
+        if remaining_time == 0:
+            break
 
-@app.route("/result", methods=["POST"])
-def result():
-    reference_text = request.form["reference_text"]
-    typed_text = request.form["typed_text"]
-    start_time = float(request.form["start_time"])
-    end_time = time()
+        time.sleep(0.05)
 
     # Calculate results
-    errors = calculate_errors(reference_text, typed_text)
-    typing_speed = calculate_typing_speed(start_time, end_time, typed_text)
+    elapsed_time = time.time() - start_time
+    typed_text = ''.join(user_input)
+    correct_chars = sum(1 for i, c in enumerate(typed_text) if i < len(sample_text) and c == sample_text[i])
+    accuracy = (correct_chars / len(typed_text)) * 100 if typed_text else 0
+    wpm = len(typed_text.split()) * (60 / elapsed_time)
 
-    return render_template("result.html", errors=errors, typing_speed=typing_speed)
+    # Prepare results
+    results = [
+        "\nResults:",
+        f"Words per minute (WPM): {wpm:.2f}",
+        f"Accuracy: {accuracy:.2f}%",
+        f"\nYour typed text: {typed_text}",
+        f"\nOriginal text: {sample_text}",
+    ]
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    # Return results to display after exiting curses
+    return results
+
+# Main wrapper
+try:
+        # Run curses application and get results
+    results = curses.wrapper(typing_test)
+except KeyboardInterrupt:
+        # Handle abrupt exit
+    print("\nTyping test interrupted.")
+    exit()
+
+    # Print results after curses ends
+print("\n".join(results))
