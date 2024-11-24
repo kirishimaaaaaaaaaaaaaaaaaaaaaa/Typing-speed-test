@@ -26,4 +26,5 @@ http://127.0.0.1:5002
 Click Start Test, type the displayed sentence, and press Enter (or click Finish Test) to view your results.
 
 
-![image](https://github.com/user-attachments/assets/54421762-9bf2-4d50-905b-7e38f093424a)
+![image](https://github.com/user-attachments/assets/44601ad3-11df-484f-90dc-064fbdd256ad)
+
